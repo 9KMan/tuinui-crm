@@ -1,0 +1,517 @@
+// Prisma Schema for Twenty-Style CRM
+// Generated for Phase 2: Auth + Users + Contacts + Companies + Activities
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Base & Enums
+// ─────────────────────────────────────────────
+
+enum RoleName {
+  ADMIN
+  MANAGER
+  USER
+  VIEWER
+}
+
+enum ContactCompanySize {
+  STARTUP
+  SMB
+  MID
+  ENTERPRISE
+}
+
+enum ActivityType {
+  EMAIL
+  CALL
+  NOTE
+  TASK
+  EVENT
+  CUSTOM
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum LinkedEntityType {
+  CONTACT
+  COMPANY
+  DEAL
+  TASK
+  EVENT
+  NONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum DealStage {
+  PROSPECT
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum EventRecurring {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// ─────────────────────────────────────────────
+// Role
+// ─────────────────────────────────────────────
+
+model Role {
+  id          String    @id @default(uuid())
+  name        RoleName  @unique
+  permissions Json      @default("[]")
+  isDefault   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+// ─────────────────────────────────────────────
+// User
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  avatar        String?
+  roleId        String
+  role          Role      @relation(fields: [roleId], references: [id])
+  preferences   Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  contacts      Contact[]
+  companies     Company[]
+  deals         Deal[]
+  tasks         Task[]
+  events        Event[]
+  notes         Note[]
+  files         File[]
+  activities    Activity[]
+  createdContacts Contact[] @relation("CreatedBy")
+  createdCompanies Company[] @relation("CompanyCreatedBy")
+  createdDeals Deal[] @relation("DealCreatedBy")
+  createdTasks Task[] @relation("TaskCreatedBy")
+  createdEvents Event[] @relation("EventCreatedBy")
+  createdNotes Note[] @relation("NoteCreatedBy")
+  createdFiles File[] @relation("FileCreatedBy")
+  createdActivities Activity[] @relation("ActivityCreatedBy")
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Refresh Token (stored in DB, also synced to Redis)
+// ─────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────
+// Contact
+// ─────────────────────────────────────────────
+
+model Contact {
+  id          String   @id @default(uuid())
+  name        String
+  email       String?
+  phone       String?
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  jobTitle    String?
+  avatar      String?
+  notes       String?
+  customFields Json    @default("{}")
+  createdById String
+  createdBy   User     @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  activities Activity[]
+  deals      Deal[]
+
+  @@map("contacts")
+}
+
+// ─────────────────────────────────────────────
+// Company
+// ─────────────────────────────────────────────
+
+model Company {
+  id           String            @id @default(uuid())
+  name         String
+  domain       String?
+  industry     String?
+  size         ContactCompanySize?
+  address      String?
+  logo         String?
+  customFields Json              @default("{}")
+  createdById  String
+  createdBy    User              @relation("CompanyCreatedBy", fields: [createdById], references: [id])
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+
+  contacts    Contact[]
+  deals       Deal[]
+
+  @@map("companies")
+}
+
+// ─────────────────────────────────────────────
+// Deal
+// ─────────────────────────────────────────────
+
+model Deal {
+  id               String    @id @default(uuid())
+  title            String
+  amount           Float     @default(0)
+  currency         String    @default("USD")
+  stage            DealStage @default(PROSPECT)
+  probability      Int       @default(0)
+  expectedCloseDate DateTime?
+  companyId        String?
+  company          Company?  @relation(fields: [companyId], references: [id])
+  contactId        String?
+  contact          Contact?  @relation(fields: [contactId], references: [id])
+  customFields     Json      @default("{}")
+  createdById      String
+  createdBy        User      @relation("DealCreatedBy", fields: [createdById], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  activities Activity[]
+
+  @@map("deals")
+}
+
+// ─────────────────────────────────────────────
+// Task
+// ─────────────────────────────────────────────
+
+model Task {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  dueDate      DateTime?
+  reminderAt   DateTime?
+  priority     TaskPriority  @default(MEDIUM)
+  status       TaskStatus    @default(TODO)
+  assigneeId   String?
+  assignee     User?         @relation("TaskAssignedUser", fields: [assigneeId], references: [id])
+  linkedType   LinkedEntityType @default(NONE)
+  linkedId     String?
+  recurring    Json?
+  completedAt  DateTime?
+  createdById  String
+  createdBy    User          @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+
+  activities Activity[]
+
+  @@map("tasks")
+}
+
+// ─────────────────────────────────────────────
+// Event
+// ─────────────────────────────────────────────
+
+model Event {
+  id          String          @id @default(uuid())
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime?
+  location    String?
+  linkedType  LinkedEntityType @default(NONE)
+  linkedId    String?
+  attendees   Json            @default("[]")
+  createdById String
+  createdBy   User            @relation("EventCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  activities Activity[]
+
+  @@map("events")
+}
+
+// ─────────────────────────────────────────────
+// Note
+// ─────────────────────────────────────────────
+
+model Note {
+  id         String          @id @default(uuid())
+  content    String
+  authorId   String
+  author     User            @relation("NoteCreatedBy", fields: [authorId], references: [id])
+  linkedType LinkedEntityType @default(NONE)
+  linkedId   String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  deletedAt  DateTime?
+
+  @@map("notes")
+}
+
+// ─────────────────────────────────────────────
+// File
+// ─────────────────────────────────────────────
+
+model File {
+  id          String          @id @default(uuid())
+  filename    String
+  mimeType    String
+  size        Int
+  url         String
+  linkedType  LinkedEntityType @default(NONE)
+  linkedId    String?
+  uploadedById String
+  uploadedBy  User            @relation("FileCreatedBy", fields: [uploadedById], references: [id])
+  createdAt   DateTime        @default(now())
+  deletedAt   DateTime?
+
+  @@map("files")
+}
+
+// ─────────────────────────────────────────────
+// Activity (Polymorphic)
+// ─────────────────────────────────────────────
+
+model Activity {
+  id        String          @id @default(uuid())
+  type      ActivityType
+  subject   String?
+  body      String?
+  metadata  Json            @default("{}")
+  userId    String
+  user      User            @relation("ActivityCreatedBy", fields: [userId], references: [id])
+  linkedType LinkedEntityType
+  linkedId  String?
+  createdAt DateTime        @default(now())
+  deletedAt DateTime?
+
+  // Linked entities (optional relations for easy querying)
+  contactId String?
+  contact   Contact? @relation(fields: [contactId], references: [id])
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  dealId    String?
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  taskId    String?
+  task      Task?    @relation(fields: [taskId], references: [id])
+  eventId   String?
+  event     Event?   @relation(fields: [eventId], references: [id])
+
+  @@map("activities")
+}
+
+// ─────────────────────────────────────────────
+// Automation
+// ─────────────────────────────────────────────
+
+model Automation {
+  id         String    @id @default(uuid())
+  name       String
+  trigger    Json
+  actions    Json
+  isActive   Boolean   @default(true)
+  lastRunAt  DateTime?
+  createdById String
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  logs AutomationLog[]
+
+  @@map("automations")
+}
+
+model AutomationLog {
+  id           String   @id @default(uuid())
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  triggerData  Json
+  actionsRun   Json
+  status       String   // 'success' | 'failed'
+  error        String?
+  executedAt   DateTime @default(now())
+  completedAt  DateTime?
+
+  @@map("automation_logs")
+}
+
+// ─────────────────────────────────────────────
+// Audit Log
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  changes    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// Email Template
+// ─────────────────────────────────────────────
+
+model EmailTemplate {
+  id         String   @id @default(uuid())
+  name       String
+  subject    String
+  body       String
+  createdById String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  @@map("email_templates")
+}
+
+// ─────────────────────────────────────────────
+// View (Saved View)
+// ─────────────────────────────────────────────
+
+model View {
+  id         String   @id @default(uuid())
+  name       String
+  objectType String
+  filters    Json     @default("[]")
+  sortBy     Json     @default("[]")
+  columns    Json?
+  groupBy    Json?
+  isDefault  Boolean  @default(false)
+  userId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  @@map("views")
+}
+
+// ─────────────────────────────────────────────
+// Custom Object Definition
+// ─────────────────────────────────────────────
+
+model CustomObject {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  pluralName  String
+  fields      Json     @default("[]")
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@map("custom_objects")
+}
+
+// ─────────────────────────────────────────────
+// Workspace Settings
+// ─────────────────────────────────────────────
+
+model Settings {
+  id           String   @id @default(uuid())
+  companyName  String   @default("My Company")
+  logo         String?
+  currency     String   @default("USD")
+  timezone     String   @default("UTC")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ─────────────────────────────────────────────
+// Custom Fields
+// ─────────────────────────────────────────────
+
+model CustomField {
+  id         String   @id @default(uuid())
+  name       String   // API key: e.g., "linkedin_url"
+  label      String   // Display name: e.g., "LinkedIn URL"
+  type       String   // TEXT, NUMBER, DATE, BOOLEAN, SELECT, MULTISELECT
+  required   Boolean  @default(false)
+  options    Json?    // For SELECT/MULTISELECT: ["Option1", "Option2"]
+  entityType String   // CONTACT, COMPANY, DEAL, TASK, EVENT
+  position   Int      @default(0)
+  visible    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  values     CustomFieldValue[]
+
+  @@unique([name, entityType])
+  @@index([entityType])
+}
+
+model CustomFieldValue {
+  id           String   @id @default(uuid())
+  entityType   String   // Mirrors the entity type: CONTACT, COMPANY, etc.
+  entityId     String   // The ID of the entity (Contact, Company, etc.)
+  fieldId      String   // References CustomField.id
+  value        Json     // Flexible: string, number, boolean, array depending on field type
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  field        CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([entityType, entityId, fieldId])
+  @@index([entityType, entityId])
+}
