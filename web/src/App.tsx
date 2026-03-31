@@ -13,6 +13,9 @@ import SettingsPage from './pages/SettingsPage'
 import { CustomFieldsPanel } from './features/admin/CustomFieldsPanel'
 import { AutomationsPanel } from './features/admin/AutomationsPanel'
 import { WebhooksPanel } from './features/admin/WebhooksPanel'
+import { RolesPanel } from './features/admin/RolesPanel'
+import { AuditLogsPanel } from './features/admin/AuditLogsPanel'
+import { ApiKeysPanel } from './features/admin/ApiKeysPanel'
 
 function App() {
   return (
@@ -37,6 +40,9 @@ function App() {
           <Route path="/admin/fields" element={<CustomFieldsPanel />} />
           <Route path="/admin/automations" element={<AutomationsPanel />} />
           <Route path="/admin/webhooks" element={<WebhooksPanel />} />
+          <Route path="/admin/roles" element={<RolesPanel />} />
+          <Route path="/admin/audit" element={<AuditLogsPanel />} />
+          <Route path="/admin/api-keys" element={<ApiKeysPanel />} />
         </Route>
       </Route>
 

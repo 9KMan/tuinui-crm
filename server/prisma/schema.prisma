@@ -14,13 +14,6 @@ datasource db {
 // Base & Enums
 // ─────────────────────────────────────────────
 
-enum RoleName {
-  ADMIN
-  MANAGER
-  USER
-  VIEWER
-}
-
 enum ContactCompanySize {
   STARTUP
   SMB
@@ -83,16 +76,34 @@ enum EventRecurring {
 // ─────────────────────────────────────────────
 
 model Role {
-  id          String    @id @default(uuid())
-  name        RoleName  @unique
-  permissions Json      @default("[]")
-  isDefault   Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  users User[]
+  id          String   @id @default(uuid())
+  name        String   @unique  // ADMIN, MANAGER, USER, VIEWER
+  description String?
+  permissions Json     // ["contacts:read", "contacts:write", "deals:read", "deals:write", "admin"]
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
 
   @@map("roles")
+}
+
+// ─────────────────────────────────────────────
+// ApiKey
+// ─────────────────────────────────────────────
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  name        String
+  keyHash     String   @unique  // SHA-256 hash of the actual key
+  prefix      String           // First 8 chars shown in UI (e.g., "crm_sk_4f3b")
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+  @@index([keyHash])
+  @@map("api_keys")
 }
 
 // ─────────────────────────────────────────────
@@ -107,6 +118,7 @@ model User {
   avatar        String?
   roleId        String
   role          Role      @relation(fields: [roleId], references: [id])
+  roles         Role[]    @relation("UserRoles")
   preferences   Json      @default("{}")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -130,6 +142,11 @@ model User {
   createdFiles File[] @relation("FileCreatedBy")
   createdActivities Activity[] @relation("ActivityCreatedBy")
   refreshTokens RefreshToken[]
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+
+  createdAutomations Automation[]
+  createdWebhooks Webhook[]
 
   @@map("users")
 }
@@ -359,34 +376,64 @@ model Activity {
 // ─────────────────────────────────────────────
 
 model Automation {
-  id         String    @id @default(uuid())
-  name       String
-  trigger    Json
-  actions    Json
-  isActive   Boolean   @default(true)
-  lastRunAt  DateTime?
-  createdById String
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  deletedAt  DateTime?
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  triggerType   String   // RECORD_CREATED, RECORD_UPDATED, RECORD_DELETED, FIELD_CHANGED, SCHEDULE, WEBHOOK
+  triggerConfig Json     // { entityType, fieldName, cron, etc. }
+  conditions    Json?    // [{ field, operator, value }]
+  actions       Json     // [{ type, config }]
+  isActive      Boolean  @default(true)
+  lastRunAt     DateTime?
+  runCount      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   String?
+  createdBy     User?    @relation(fields: [createdById], references: [id])
+  deletedAt     DateTime?
 
   logs AutomationLog[]
 
+  @@index([isActive])
+  @@index([triggerType])
   @@map("automations")
 }
 
 model AutomationLog {
-  id           String   @id @default(uuid())
+  id           String     @id @default(uuid())
   automationId String
   automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
-  triggerData  Json
+  triggerData  Json?
   actionsRun   Json
-  status       String   // 'success' | 'failed'
+  status       String     // SUCCESS, FAILED, PARTIAL
   error        String?
-  executedAt   DateTime @default(now())
-  completedAt  DateTime?
+  durationMs   Int?
+  executedAt   DateTime   @default(now())
 
+  @@index([automationId])
+  @@index([executedAt])
   @@map("automation_logs")
+}
+
+// ─────────────────────────────────────────────
+// Webhook
+// ─────────────────────────────────────────────
+
+model Webhook {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  secret      String?
+  events      String[] // ["contact.created", "deal.stage_changed"]
+  headers     Json?    // Custom headers
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id])
+
+  @@index([isActive])
+  @@map("webhooks")
 }
 
 // ─────────────────────────────────────────────
@@ -397,13 +444,17 @@ model AuditLog {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id])
-  action     String
-  entityType String
-  entityId   String
-  changes    Json?
+  action     String   // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, EXPORT
+  entityType String?  // Contact, Company, Deal, etc.
+  entityId   String?
+  changes    Json?    // { field: [oldValue, newValue] }
   ipAddress  String?
+  userAgent  String?
   createdAt  DateTime @default(now())
-
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([action])
   @@map("audit_logs")
 }
 

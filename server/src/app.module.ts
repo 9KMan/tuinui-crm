@@ -19,6 +19,7 @@ import { CustomObjectsModule } from './custom-objects/custom-objects.module';
 import { ViewsModule } from './views/views.module';
 import { RolesModule } from './roles/roles.module';
 import { AuditModule } from './audit/audit.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
 import { SearchModule } from './search/search.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -66,6 +67,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ViewsModule,
     RolesModule,
     AuditModule,
+    ApiKeysModule,
     SearchModule,
     CustomFieldsModule,
   ],

@@ -15,6 +15,8 @@ import {
   Shield,
   Zap,
   Webhook,
+  Scroll,
+  Key,
 } from 'lucide-react'
 import { logoutAtom } from '../../stores/authStore'
 
@@ -117,6 +119,45 @@ export function Sidebar() {
         >
           <Shield className="w-5 h-5" />
           Admin
+        </NavLink>
+        <NavLink
+          to="/admin/roles"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`
+          }
+        >
+          <Shield className="w-5 h-5" />
+          Roles & Permissions
+        </NavLink>
+        <NavLink
+          to="/admin/audit"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`
+          }
+        >
+          <Scroll className="w-5 h-5" />
+          Audit Logs
+        </NavLink>
+        <NavLink
+          to="/admin/api-keys"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`
+          }
+        >
+          <Key className="w-5 h-5" />
+          API Keys
         </NavLink>
         <NavLink
           to="/settings"
