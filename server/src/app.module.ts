@@ -14,6 +14,7 @@ import { FilesModule } from './files/files.module';
 import { NotesModule } from './notes/notes.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { AutomationModule } from './automation/automation.module';
+import { WebhookModule } from './webhooks/webhook.module';
 import { CustomObjectsModule } from './custom-objects/custom-objects.module';
 import { ViewsModule } from './views/views.module';
 import { RolesModule } from './roles/roles.module';
@@ -60,6 +61,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     NotesModule,
     ActivitiesModule,
     AutomationModule,
+    WebhookModule,
     CustomObjectsModule,
     ViewsModule,
     RolesModule,

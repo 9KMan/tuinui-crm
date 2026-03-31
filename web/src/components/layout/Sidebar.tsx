@@ -13,6 +13,8 @@ import {
   Search,
   LogOut,
   Shield,
+  Zap,
+  Webhook,
 } from 'lucide-react'
 import { logoutAtom } from '../../stores/authStore'
 
@@ -77,6 +79,32 @@ export function Sidebar() {
 
       {/* Bottom actions */}
       <div className="px-3 py-2 border-t border-gray-200 space-y-1">
+        <NavLink
+          to="/admin/automations"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`
+          }
+        >
+          <Zap className="w-5 h-5" />
+          Automations
+        </NavLink>
+        <NavLink
+          to="/admin/webhooks"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'bg-primary-50 text-primary-700'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`
+          }
+        >
+          <Webhook className="w-5 h-5" />
+          Webhooks
+        </NavLink>
         <NavLink
           to="/admin/fields"
           className={({ isActive }) =>

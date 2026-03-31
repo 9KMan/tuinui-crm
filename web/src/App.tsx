@@ -11,6 +11,8 @@ import DealsPage from './pages/DealsPage'
 import TasksPage from './pages/TasksPage'
 import SettingsPage from './pages/SettingsPage'
 import { CustomFieldsPanel } from './features/admin/CustomFieldsPanel'
+import { AutomationsPanel } from './features/admin/AutomationsPanel'
+import { WebhooksPanel } from './features/admin/WebhooksPanel'
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin/fields" element={<CustomFieldsPanel />} />
+          <Route path="/admin/automations" element={<AutomationsPanel />} />
+          <Route path="/admin/webhooks" element={<WebhooksPanel />} />
         </Route>
       </Route>
 
